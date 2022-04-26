@@ -127,7 +127,7 @@ def init_game(env, players, eps_opt, eps_agent, Q_table):
     return player_opt, state, action, end
 
 
-def print_game(env, game_nb, winner, players):
+def print_game_end(env, game_nb, winner, players):
     """
     Prints the game stats after it ended
 
@@ -196,7 +196,7 @@ def eps_policy(env, nb_epochs=20000, eps_agent=0., eps_opt=0.5, alpha=0.5, gamma
         
         
         if print_last_10_games and epoch>=19990:
-            print_game(env, epoch, winner, players)
+            print_game_end(env, epoch, winner, players)
 
     t_end = time.time()
     print('Learning finished after {:.2f}s\nPlayed a total of {} games'.format((t_end - t_start), nb_epochs))
