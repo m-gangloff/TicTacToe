@@ -186,16 +186,6 @@ def optimize_model(policy_net, target_net, optimizer, memory, batch_size=64, gam
     # detailed explanation). This converts batch-array of Transitions
     # to Transition of batch-arrays.
     batch = Transition(*zip(*transitions))
-
-    # Compute a mask of non-final states and concatenate the batch elements
-    # (a final state would've been the one after which simulation ended)
-    # Shape (batch_size,)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
-    
-    # Shape (#non_final_next_states, 18)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
     
     # Shape (batch_size, 18), (batch_size, 1), (batch_size,)
     state_batch = torch.cat(batch.state)
@@ -215,9 +205,22 @@ def optimize_model(policy_net, target_net, optimizer, memory, batch_size=64, gam
     # state value or 0 in case the state batch_size final.
     # Shape  (batch_size, )
     next_state_values = torch.zeros(batch_size, device=device)
-    
-    # For final states, the values are zeros
-    next_state_values[non_final_mask] = target_net(non_final_next_states.to(device)).max(1)[0].detach()
+
+    # Compute a mask of non-final states and concatenate the batch elements
+    # (a final state would've been the one after which simulation ended)
+    # Shape (batch_size,)
+    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
+                                          batch.next_state)), device=device, dtype=torch.bool)
+
+    # There're some non final states
+    if torch.any(non_final_mask):
+        
+        # Shape (#non_final_next_states, 18)
+        non_final_next_states = torch.cat([s for s in batch.next_state
+                                                    if s is not None])
+
+        # For final states, the values are zeros
+        next_state_values[non_final_mask] = target_net(non_final_next_states.to(device)).max(1)[0].detach()
     
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * gamma) + reward_batch
