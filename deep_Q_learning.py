@@ -70,6 +70,8 @@ class DQN(nn.Module):
         """
         return self.layers(x)
 
+def update_eps(current_epoch, max_epoch=20000, eps_min=0.1, eps_max=0.8):
+    return max(eps_min, eps_max*(1-current_epoch/max_epoch)) 
 
 def pick_action(state, policy_net, epsilon=0, device='cuda'):
     """
@@ -240,7 +242,8 @@ def optimize_model(policy_net, target_net, optimizer, memory, batch_size=64, gam
 def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
         nb_epochs=20000, target_update=500, buffer_size=10000, 
         batch_size=64, n_hidden=2, hidden_size=128, 
-        print_last_10_games=False, progress_bar=True):
+        decay_eps=False, eps_min=0.1, eps_max=0.8, max_epoch=20000,
+        eval_every=250, print_last_10_games=False, progress_bar=True):
 
     """
     Trains an agent to play Tic Tac Toe using an Deep Q Learning. 
@@ -257,6 +260,11 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
         batch_size: batch size for training the policy net
         n_hidden: Number of hidden layers of policy net 
         hidden_size: The size of hidden layers in policy net
+        decay_eps: whether to decay the agent epsilon
+        eps_min, eps_max, max_epoch: params of decay eps 
+
+    returns:
+        average training losses, average rewards, Mrand, Mopt for every 250 epochs
     """
 
     env, policy_net, target_net, optimizer, memory, device = setup_env(n_hidden, hidden_size, buffer_size, alpha)
@@ -267,7 +275,15 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
 
     t_start = time.time()
 
+    avg_training_losses, training_losses = [], []
+    avg_rewards, rewards = [], []
+    Mrands, Mopts = [], []
+
     for epoch in tqdm(range(nb_epochs), disable=not progress_bar):
+        
+        if decay_eps:
+            eps_agent = update_eps(epoch, max_epoch, eps_min, eps_max)
+
         # Reset enviroment before starting game
         env.reset()
         grid, end, _ = env.observe()
@@ -319,9 +335,22 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
 
             # Perform one step of the optimization (on the policy network)
             loss = optimize_model(policy_net, target_net, optimizer, memory, batch_size, gamma, device)
+            
+            if loss is not None:
+                training_losses.append(loss)
+            rewards.append(reward.item())
 
             if end:
                 break
+        
+        if epoch % eval_every == eval_every-1:
+            avg_training_losses.append(sum(training_losses)/len(training_losses))
+            avg_rewards.append(sum(rewards)/len(rewards))
+            training_losses, rewards = [], []
+
+            Mopt, Mrand = evaluate(env, policy_net, device)
+            Mrands.append(Mrand)
+            Mopts.append(Mopt)
 
         if epoch % target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
@@ -332,4 +361,81 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
     
     t_end = time.time()
     print('Learning finished after {:.2f}s\nPlayed a total of {} games'.format((t_end - t_start), nb_epochs))
- 
+
+    return avg_training_losses, avg_rewards, Mrands, Mopts
+
+def evaluate(env, policy_net, device):
+    """
+    Compute Mrand and Mopt
+
+    params:
+        env: Instance of the TictactoeEnv class from ``tic_env.py``
+        policy_net: the DQN module, inputs are encoded states, outputs are Q-values
+        device: 'cuda' or 'cpu', indicate the device pytorch uses
+
+    returns:
+        Mopt, Mrand
+        
+    """
+    #players[0] -> OptimalPlayer
+    #players[1] -> Agent
+    players = ['X','O']
+
+    results = []
+    eps_agent = 0
+    for eps_opt in range(2):
+        n_wins, n_losses = 0, 0
+        for _ in range(500):
+            # Reset enviroment before starting game
+            env.reset()
+            grid, end, _ = env.observe()
+
+            # Switch the first players and init the optimal player
+            players = np.flip(players)
+            player_opt = OptimalPlayer(epsilon=eps_opt, player=players[0])
+
+            # If the optimal player goes first
+            if env.current_player == player_opt.player:
+                move = player_opt.act(grid)
+                grid, end, winner = env.step(move)
+
+            # Encode the state
+            state = grid_to_state_tensor(grid, players[1], device)
+
+            while not end:
+                # Select and perform an action
+                action = pick_action(state, policy_net, eps_agent, device)
+
+                # If agent takes an unavailable action
+                if not env.check_valid(action.item()):
+                    # end the game and reward is -1 
+                    end = True
+                    n_losses += 1
+                    break
+
+                # Agent plays
+                grid, end, _ = env.step(action.item())
+                
+                # Agent wins
+                if end:
+                    n_wins +=1
+                    break 
+                
+                # If agent does not win yet
+                # Optimal player plays
+                move = player_opt.act(grid)
+                grid, end, winner = env.step(move) 
+                
+                # Optimal player wins
+                if end:
+                    n_losses +=1
+                    break 
+
+                next_state = grid_to_state_tensor(grid, players[1], device)
+    
+                # Move to the next state
+                state = next_state
+   
+        results.append((n_wins-n_losses)/500)
+
+    return results
