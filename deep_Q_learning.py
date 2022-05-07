@@ -148,7 +148,6 @@ def setup_env(n_hidden=2, hidden_size=128, buffer_size=10000, lr=5e-4):
     """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
     env = TictactoeEnv()
     policy_net = DQN(hidden_size=hidden_size, n_hidden_layers=n_hidden).to(device)
     target_net = DQN(hidden_size=hidden_size, n_hidden_layers=n_hidden).to(device)
@@ -346,7 +345,7 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
             if end:
                 break
         
-        if epoch % eval_every == eval_every-1:
+        if eval_every >0 and epoch % eval_every == eval_every-1:
             avg_training_losses.append(sum(training_losses)/len(training_losses))
             avg_rewards.append(sum(rewards)/len(rewards))
             training_losses, rewards = [], []
@@ -365,7 +364,7 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
     t_end = time.time()
     print('Learning finished after {:.2f}s\nPlayed a total of {} games'.format((t_end - t_start), nb_epochs))
 
-    return avg_training_losses, avg_rewards, Mrands, Mopts
+    return policy_net, avg_training_losses, avg_rewards, Mrands, Mopts
 
 def self_train(eps_agent=0., gamma=0.99, alpha=5e-4,
         nb_epochs=20000, target_update=500, buffer_size=10000, 
@@ -469,7 +468,7 @@ def self_train(eps_agent=0., gamma=0.99, alpha=5e-4,
                 if end:
                     break
             
-        if epoch % eval_every == eval_every-1:
+        if eval_every >0 and epoch % eval_every == eval_every-1:
             avg_training_losses.append(sum(training_losses)/len(training_losses))
             avg_rewards.append(sum(rewards)/len(rewards))
             training_losses, rewards = [], []
@@ -488,7 +487,7 @@ def self_train(eps_agent=0., gamma=0.99, alpha=5e-4,
     t_end = time.time()
     print('Learning finished after {:.2f}s\nPlayed a total of {} games'.format((t_end - t_start), nb_epochs))
 
-    return avg_training_losses, avg_rewards, Mrands, Mopts
+    return policy_net, avg_training_losses, avg_rewards, Mrands, Mopts
 
 def evaluate(env, policy_net, device):
     """
