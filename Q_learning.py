@@ -240,7 +240,7 @@ def eps_policy(env, Q_table, nb_epochs=20000, eps_agent=0., eps_opt=0.5, alpha=0
 
     t_end = time.time()
     if not test_perf:
-        print('Learning finished after {:.2f}s\nPlayed a total of {} games'.format((t_end - t_start), nb_epochs))
+        print('Learning finished after {:.2f}s, played {} games'.format((t_end - t_start), nb_epochs))
 
     if test_opt_vs_rnd:
         return Q_table.copy(), M_opts, M_rnds
@@ -249,7 +249,7 @@ def eps_policy(env, Q_table, nb_epochs=20000, eps_agent=0., eps_opt=0.5, alpha=0
 
 
 def eps_policy_self_practice(env, Q_table, nb_epochs=20000, eps_agents=0., alpha=0.5, gamma=0.99,
-            decay_eps=True, eps_min=0.1, eps_max=0.8, expl_games=1000):
+            decay_eps=False, eps_min=0.1, eps_max=0.8, expl_games=1000):
     """
     Trains an agent to play Tic Tac Toe using an epsilon-greedy policy. 
     See section 6.5 of https://www.andrew.cmu.edu/course/10-703/textbook/BartoSutton.pdf
