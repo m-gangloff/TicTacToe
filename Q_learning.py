@@ -96,9 +96,9 @@ def update_q(reward, Q_table, state_arr, action, next_state_arr=None, next_actio
     if state_arr==None or next_action==None:
         Q_table[state_arr][action] += alpha * (reward - Q_table[state_arr][action])
     else:
-        if not 'counter' in Q_table:
-            Q_table['counter'] = dict()
-        Q_table['counter'][state_arr] = Q_table['counter'].get(state_arr, 0) + 1
+        # if not 'counter' in Q_table:
+        #     Q_table['counter'] = dict()
+        # Q_table['counter'][state_arr] = Q_table['counter'].get(state_arr, 0) + 1
         Q_table[state_arr][action] += alpha * (reward + gamma * Q_table[next_state_arr][next_action] - Q_table[state_arr][action])
 
 
