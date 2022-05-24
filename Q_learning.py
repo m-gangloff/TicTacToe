@@ -3,6 +3,7 @@ import time
 from tic_env import OptimalPlayer
 from tqdm.notebook import tqdm
 
+
 def empty_pos(state_arr):
     """
     return all empty positions of a grid
@@ -155,7 +156,7 @@ def performance_measures(env, Q_table):
 
 
 def eps_policy(env, Q_table, nb_epochs=20000, eps_agent=0., eps_opt=0.5, alpha=0.5, gamma=0.99, decay_eps=False, 
-                eps_min=0.1, eps_max=0.8, expl_games=1000, test_opt_vs_rnd=False, test_perf=False):
+                eps_min=0.1, eps_max=0.8, expl_games=1000, eval_every=-1, test_perf=False):
     """
     Trains an agent to play Tic Tac Toe using an epsilon-greedy policy. 
     See section 6.5 of https://www.andrew.cmu.edu/course/10-703/textbook/BartoSutton.pdf
@@ -172,7 +173,7 @@ def eps_policy(env, Q_table, nb_epochs=20000, eps_agent=0., eps_opt=0.5, alpha=0
     - eps_min : minimum exploration value of the exploration function
     - eps_max : maximum exploration value of the exploration function
     - expl_games : number of games ```n*``` used for the denominator of the exploration function
-    - test_opt_vs_rnd: If true, the performance between the agent and the optimal player will be tested after every 250 games
+    - eval_every: If > 0, the performance between the agent and the optimal player will be tested after every ```eval_every``` games
     - test_perf: If True, updates the Q-Table, else plays the games without updating the Q-Table
     Returns:
         Copy of the Q-table and a list containing the average of the rewards from every 250 games
@@ -189,7 +190,7 @@ def eps_policy(env, Q_table, nb_epochs=20000, eps_agent=0., eps_opt=0.5, alpha=0
 
     # for epoch in tqdm(range(nb_epochs), disable=test_perf, mininterval=1, miniters=1):
     # for epoch in tqdm(range(nb_epochs)):
-    for epoch in range(nb_epochs):
+    for epoch in tqdm(range(nb_epochs), disable=test_perf):
 
         if decay_eps:
             eps_agent = max(eps_min, eps_max*(1-(epoch+1)/expl_games))
@@ -230,26 +231,27 @@ def eps_policy(env, Q_table, nb_epochs=20000, eps_agent=0., eps_opt=0.5, alpha=0
         # After every 250 games, test performance or calculate average rewards
         rewards.append(env.reward(agent))
         if (epoch+1)%250 == 0:
-            if test_opt_vs_rnd:
+            rewards_250.append(np.mean(rewards))
+            rewards = []
+
+        if eval_every > 0:
+            if (epoch+1) % eval_every == 0:
                 M_opt, M_rnd = performance_measures(env, Q_table)
                 M_opts.append(M_opt)
                 M_rnds.append(M_rnd)
-            else:
-                rewards_250.append(np.mean(rewards))
-                rewards = []
 
     t_end = time.time()
     if not test_perf:
         print('Learning finished after {:.2f}s, played {} games'.format((t_end - t_start), nb_epochs))
 
-    if test_opt_vs_rnd:
+    if eval_every > 0:
         return Q_table.copy(), M_opts, M_rnds
 
     return Q_table.copy(), rewards_250
 
 
 def eps_policy_self_practice(env, Q_table, nb_epochs=20000, eps_agents=0., alpha=0.5, gamma=0.99,
-            decay_eps=False, eps_min=0.1, eps_max=0.8, expl_games=1000):
+            decay_eps=False, eps_min=0.1, eps_max=0.8, expl_games=1000, eval_every=250):
     """
     Trains an agent to play Tic Tac Toe using an epsilon-greedy policy. 
     See section 6.5 of https://www.andrew.cmu.edu/course/10-703/textbook/BartoSutton.pdf
@@ -265,6 +267,7 @@ def eps_policy_self_practice(env, Q_table, nb_epochs=20000, eps_agents=0., alpha
     - eps_min : minimum exploration value of the exploration function
     - eps_max : maximum exploration value of the exploration function
     - expl_games : number of games ```n*``` used for the denominator of the exploration function
+    - eval_every: If > 0, the performance between the agent and the optimal player will be tested after every ```eval_every``` games
     Returns:
         Copy of the Q-table and a list containing the average of the rewards from every 250 games
     """
@@ -311,11 +314,12 @@ def eps_policy_self_practice(env, Q_table, nb_epochs=20000, eps_agents=0., alpha
                     update_q(env.reward(players[1]), Q_table, states[players[1]], actions[players[1]])
                     break
         
-        # After every 250 games, test performance or calculate average rewards
-        if (epoch+1)%250 == 0:
-            M_opt, M_rnd = performance_measures(env, Q_table)
-            M_opts.append(M_opt)
-            M_rnds.append(M_rnd)
+        # After every ```eval_every``` games, test performance
+        if eval_every > 0:
+            if (epoch+1)%eval_every == 0:
+                M_opt, M_rnd = performance_measures(env, Q_table)
+                M_opts.append(M_opt)
+                M_rnds.append(M_rnd)
 
     t_end = time.time()
     print('Learning finished after {:.2f}s, played {} games'.format((t_end - t_start), nb_epochs))
