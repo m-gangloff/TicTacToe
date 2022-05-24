@@ -1,4 +1,5 @@
 import numpy as np
+np.random.seed(15)
 import time
 from tic_env import OptimalPlayer
 from tqdm.notebook import tqdm
@@ -89,12 +90,15 @@ def update_q(reward, Q_table, state_arr, action, next_state_arr=None, next_actio
         Q_table: ``dict()`` having as key the state as an array and as value a ``dict()`` with all the available actions
         state_arr: immutable array representing the grid before the last step
         action: action taken at the last step
-        state_arr: immutable array representing the grid after the last step, None if the game has finished
+        next_state_arr: immutable array representing the grid after the last step, None if the game has finished
         next_action: action to take after at the last step, None if the game has finished
     """
     if state_arr==None or next_action==None:
         Q_table[state_arr][action] += alpha * (reward - Q_table[state_arr][action])
     else:
+        if not 'counter' in Q_table:
+            Q_table['counter'] = dict()
+        Q_table['counter'][state_arr] = Q_table['counter'].get(state_arr, 0) + 1
         Q_table[state_arr][action] += alpha * (reward + gamma * Q_table[next_state_arr][next_action] - Q_table[state_arr][action])
 
 
