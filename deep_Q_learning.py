@@ -125,7 +125,7 @@ def grid_to_state_tensor(grid, our_player, device):
     return state
 
 
-def setup_env(n_hidden=2, hidden_size=128, buffer_size=10000, lr=5e-4):
+def setup_env(n_hidden=2, hidden_size=128, buffer_size=10000, lr=5e-4, seed=123):
     """
     Initialises the enviroment,
     the deep Q-learning models (act as a Q-table), 
@@ -146,6 +146,9 @@ def setup_env(n_hidden=2, hidden_size=128, buffer_size=10000, lr=5e-4):
         memory: ReplayMemory to store history data 
         device: device that torch uses
     """
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     env = TictactoeEnv()
@@ -153,7 +156,7 @@ def setup_env(n_hidden=2, hidden_size=128, buffer_size=10000, lr=5e-4):
     target_net = DQN(hidden_size=hidden_size, n_hidden_layers=n_hidden).to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
-    optimizer = optim.RMSprop(policy_net.parameters(), lr=lr)
+    optimizer = optim.Adam(policy_net.parameters(), lr=lr)
     memory = ReplayMemory(buffer_size)
     
     return env, policy_net, target_net, optimizer, memory, device
@@ -245,7 +248,7 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
         nb_epochs=20000, target_update=500, buffer_size=10000, 
         batch_size=64, n_hidden=2, hidden_size=128, 
         decay_eps=False, eps_min=0.1, eps_max=0.8, max_epoch=20000,
-        eval_every=250, print_last_10_games=False, progress_bar=True):
+        eval_every=250, print_last_10_games=False, progress_bar=True, seed=123):
 
     """
     Trains an agent to play Tic Tac Toe using an Deep Q Learning. 
@@ -269,7 +272,7 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
         average training losses, average rewards, Mrand, Mopt for every 250 epochs
     """
 
-    env, policy_net, target_net, optimizer, memory, device = setup_env(n_hidden, hidden_size, buffer_size, alpha)
+    env, policy_net, target_net, optimizer, memory, device = setup_env(n_hidden, hidden_size, buffer_size, alpha, seed)
     
     #players[0] -> OptimalPlayer
     #players[1] -> Agent
@@ -370,7 +373,7 @@ def self_train(eps_agent=0., gamma=0.99, alpha=5e-4,
         nb_epochs=20000, target_update=500, buffer_size=10000, 
         batch_size=64, n_hidden=2, hidden_size=128, 
         decay_eps=False, eps_min=0.1, eps_max=0.8, max_epoch=20000,
-        eval_every=250, print_last_10_games=False, progress_bar=True):
+        eval_every=250, print_last_10_games=False, progress_bar=True,seed=123):
 
     """
     Trains an agent to play Tic Tac Toe using an Deep Q Learning. 
@@ -393,7 +396,7 @@ def self_train(eps_agent=0., gamma=0.99, alpha=5e-4,
         average training losses, average rewards, Mrand, Mopt for every 250 epochs
     """
 
-    env, policy_net, target_net, optimizer, memory, device = setup_env(n_hidden, hidden_size, buffer_size, alpha)
+    env, policy_net, target_net, optimizer, memory, device = setup_env(n_hidden, hidden_size, buffer_size, alpha,seed)
     
     players = ['X','O']
 
