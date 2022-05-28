@@ -9,7 +9,7 @@ import random
 import time
 
 from tic_env import TictactoeEnv, OptimalPlayer
-from Q_learning import print_game
+# from Q_learning import print_game
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
@@ -360,9 +360,9 @@ def train(eps_agent=0., eps_opt=0.5, gamma=0.99, alpha=5e-4,
         if epoch % target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
 
-        if print_last_10_games and epoch>=nb_epochs-10:
-            progress_bar = False
-            print_game(env, epoch, winner, players)
+        # if print_last_10_games and epoch>=nb_epochs-10:
+        #     progress_bar = False
+        #     print_game(env, epoch, winner, players)
     
     t_end = time.time()
     print('Learning finished after {:.2f}s\nPlayed a total of {} games'.format((t_end - t_start), nb_epochs))
